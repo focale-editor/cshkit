@@ -1,0 +1,23 @@
+name: cshkit
+description: A pure Dart reader for Adobe Photoshop CSH custom-shape libraries.
+version: 0.1.0
+homepage: https://github.com/focale-editor/cshkit
+repository: https://github.com/focale-editor/cshkit
+
+environment:
+  sdk: '>=3.13.0 <4.0.0'
+
+dependencies:
+  pscore: '>=0.1.1 <0.2.0'
+
+dev_dependencies:
+  checks: ^0.3.1
+  lints: ^6.1.0
+  release: ^0.1.11
+  test: ^1.31.2
+
+release:
+  changelog:
+    header: '# 📰 CshKit changelog'
+    defaultIgnoredTypes: ['test']
+    defaultIgnoredScopes: ['repo', 'docs', 'version', 'deps', 'tools']
