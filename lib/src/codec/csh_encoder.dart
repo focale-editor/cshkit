@@ -158,11 +158,12 @@ final class CshEncoder extends Converter<CshFile, List<int>> {
   }
 
   /// Encodes one version 16 hierarchy descriptor payload.
-  static Uint8List _encodeHierarchy(PsDescriptor descriptor) =>
-      (PsBinaryWriter()
-            ..writeUint32(_descriptorVersion)
-            ..writeBytes(PsDescriptorCodec.encode(descriptor)))
-          .takeBytes();
+  static Uint8List _encodeHierarchy(PsDescriptor descriptor) => PsVersionedDescriptorCodec.encode(
+    PsVersionedDescriptor(
+      version: _descriptorVersion,
+      descriptor: descriptor,
+    ),
+  );
 
   /// Writes one ordinary or wide tagged block with requested alignment behavior.
   static void _writeTaggedBlock(
@@ -172,19 +173,16 @@ final class CshEncoder extends Converter<CshFile, List<int>> {
     Uint8List data,
     Uint8List preservedPadding,
     CshEncodeOptions options,
-  ) {
-    final bool wide = signature == '8B64';
-    writer
-      ..writeString(signature)
-      ..writeString(key)
-      ..writeLength(data.length, wide: wide)
-      ..writeBytes(data);
-    if (options.mode == CshEncodeMode.permissive) {
-      writer.writeBytes(preservedPadding);
-    } else {
-      writer.writeZeros((4 - data.length % 4) % 4);
-    }
-  }
+  ) => PsTaggedBlockCodec.write(
+    writer,
+    PsTaggedBlock(
+      signature: signature,
+      key: key,
+      data: data,
+      paddingData: preservedPadding,
+    ),
+    preservePadding: options.mode == CshEncodeMode.permissive,
+  );
 
   /// Checks that every emitted field and required payload is representable.
   static void _validateRepresentable(CshFile file, CshEncodeOptions options) {
