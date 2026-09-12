@@ -1,6 +1,6 @@
 name: cshkit
 description: A pure Dart codec for Adobe Photoshop CSH custom-shape libraries.
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/focale-editor/cshkit
 repository: https://github.com/focale-editor/cshkit
 
