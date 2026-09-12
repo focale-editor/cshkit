@@ -47,6 +47,22 @@ final List<CshSubpath> referenceContours = shape.referenceSubpaths();
 
 Each knot contains an incoming handle, an on-curve anchor, and an outgoing handle. A closed contour connects its final knot back to its first knot. Consume `CshSubpath.operation`, `operationType`, `flags`, and `fillRule` when exact Photoshop composition matters.
 
+## Reusable `dart:convert` API
+
+`CshCodec` implements `Codec<CshFile, List<int>>` and keeps decoding and encoding policies together in one immutable value:
+
+```dart
+const CshCodec codec = CshCodec(
+  decodeOptions: CshDecodeOptions(mode: CshDecodeMode.strict),
+  encodeOptions: CshEncodeOptions(mode: CshEncodeMode.strict),
+);
+
+final CshFile library = codec.decode(bytes);
+final Uint8List output = codec.encode(library);
+```
+
+The `List<int>` binary type allows composition with standard codecs such as `base64`; direct `encode` calls still return `Uint8List`. `CshEncoder` and `CshDecoder` are also configurable `Converter` implementations. Every conversion consumes or produces one complete in-memory CSH file rather than an incremental byte stream.
+
 ## SVG previews
 
 The dependency-free SVG helper is useful for diagnostics and thumbnails:

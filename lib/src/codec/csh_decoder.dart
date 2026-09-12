@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cshkit/src/codec/csh_hierarchy_mapper.dart';
@@ -8,7 +9,24 @@ import 'package:cshkit/src/model/csh_shape.dart';
 import 'package:pscore/pscore.dart';
 
 /// Decodes Adobe Photoshop `cush` custom-shape libraries.
-abstract final class CshDecoder {
+///
+/// The configured instance is a one-shot [Converter] for complete in-memory
+/// files. Use [decode] when conversion options are supplied per call.
+final class CshDecoder extends Converter<List<int>, CshFile> {
+  /// Options applied by [convert].
+  final CshDecodeOptions options;
+
+  /// Creates a reusable decoder with fixed [options].
+  const CshDecoder({
+    this.options = const CshDecodeOptions(),
+  });
+
+  @override
+  CshFile convert(List<int> input) => decode(
+    input is Uint8List ? input : Uint8List.fromList(input),
+    options: options,
+  );
+
   /// Four-byte signature used by CSH files and CustomShapes preferences.
   static const String _fileSignature = 'cush';
 

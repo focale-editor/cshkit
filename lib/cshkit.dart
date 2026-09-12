@@ -3,6 +3,7 @@ library;
 
 export 'package:pscore/pscore.dart';
 
+export 'src/codec/csh_codec.dart';
 export 'src/codec/csh_decoder.dart';
 export 'src/codec/csh_encoder.dart';
 export 'src/codec/csh_svg_encoder.dart';

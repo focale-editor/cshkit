@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cshkit/src/model/csh_file.dart';
@@ -6,7 +7,21 @@ import 'package:cshkit/src/model/csh_shape.dart';
 import 'package:pscore/pscore.dart';
 
 /// Encodes immutable CSH models into Photoshop custom-shape libraries.
-abstract final class CshEncoder {
+///
+/// The configured instance is a one-shot [Converter] for complete in-memory
+/// files. Use [encode] when conversion options are supplied per call.
+final class CshEncoder extends Converter<CshFile, List<int>> {
+  /// Options applied by [convert].
+  final CshEncodeOptions options;
+
+  /// Creates a reusable encoder with fixed [options].
+  const CshEncoder({
+    this.options = const CshEncodeOptions(),
+  });
+
+  @override
+  Uint8List convert(CshFile input) => encode(input, options: options);
+
   /// Canonical CSH container signature.
   static const String _fileSignature = 'cush';
 
