@@ -9,6 +9,15 @@ enum CshDecodeMode {
   tolerant,
 }
 
+/// Controls how strongly a CSH library is validated before encoding.
+enum CshEncodeMode {
+  /// Produces a canonical version 2 library containing version 1 shapes.
+  strict,
+
+  /// Writes representable preserved values, including compatibility extensions.
+  permissive,
+}
+
 /// Resource and preservation limits applied while decoding a CSH library.
 final class CshDecodeOptions {
   /// Handling policy for recoverable format extensions and damaged records.
@@ -76,6 +85,25 @@ final class CshDecodeOptions {
   });
 }
 
+/// Preservation and validation choices applied while encoding a CSH library.
+final class CshEncodeOptions {
+  /// Validation policy applied before values are written.
+  final CshEncodeMode mode;
+
+  /// Whether trailing Photoshop tagged blocks are appended.
+  final bool includeTaggedBlocks;
+
+  /// Whether uninterpreted trailing bytes are appended.
+  final bool includeTrailingData;
+
+  /// Creates encoding options for canonical CSH output by default.
+  const CshEncodeOptions({
+    this.mode = CshEncodeMode.strict,
+    this.includeTaggedBlocks = true,
+    this.includeTrailingData = true,
+  });
+}
+
 /// Describes a recoverable compatibility issue found while decoding.
 final class CshWarning {
   /// Human-readable explanation of the compatibility issue.
@@ -134,4 +162,18 @@ final class CshFormatException implements FormatException {
     final String location = offset == null ? '' : ' at byte $offset';
     return 'CshFormatException$location: $message';
   }
+}
+
+/// Reports model data that cannot be represented by the requested CSH output.
+final class CshWriteException implements Exception {
+  /// Explains why encoding failed.
+  final String message;
+
+  /// Creates an encoding error with a user-facing [message].
+  const CshWriteException({
+    required this.message,
+  });
+
+  @override
+  String toString() => 'CshWriteException: $message';
 }

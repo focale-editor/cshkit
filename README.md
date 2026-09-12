@@ -1,6 +1,6 @@
 # CshKit
 
-CshKit is a pure Dart reader for Adobe Photoshop custom-shape libraries (`.csh`) and `CustomShapes.psp` preference files. It exposes editable vector geometry, exact preset metadata, optional group hierarchy, and opaque extension data without depending on Flutter or native code.
+CshKit is a pure Dart codec for Adobe Photoshop custom-shape libraries (`.csh`) and `CustomShapes.psp` preference files. It reads and writes editable vector geometry, exact preset metadata, optional group hierarchy, and opaque extension data without depending on Flutter or native code.
 
 The package is intended for editors such as Focale that need more than a raster thumbnail: stable shape identifiers, cubic Bézier contours, Photoshop Boolean-operation markers, source bounds, and bounded decoding of untrusted files.
 
@@ -15,6 +15,7 @@ The package is intended for editors such as Focale that need more than a raster 
 - Version 16 `phry` Action Descriptors containing nested groups, group ends, presets, names, and identifiers.
 - `8BIM` and `8B64` tagged blocks, unknown path selectors, unknown descriptor classes, padding, and trailing bytes preserved for forward compatibility.
 - Strict and tolerant modes with configurable limits for file size, shapes, dimensions, names, shape bodies, path records, descriptors, hierarchy entries, and tagged blocks.
+- Canonical CSH writing from decoded vector paths, including reconstructed hierarchy descriptors and opt-in preservation of compatible extensions.
 
 ## Usage
 
@@ -31,6 +32,9 @@ for (final CshShape shape in library.shapes) {
   final CshVectorPath path = shape.requirePath();
   print('${shape.name}: ${path.subpaths.length} contours (${shape.id})');
 }
+
+final Uint8List output = CshEncoder.encode(library);
+await File('shapes-copy.csh').writeAsBytes(output, flush: true);
 ```
 
 Path coordinates are retained in Photoshop's source coordinate system. Helpers convert them to either a zero-based local rectangle or the absolute stored reference rectangle:
@@ -71,7 +75,7 @@ for (final CshHierarchyEntry entry in library.hierarchy) {
 
 The complete generic `PsDescriptor` is also retained for every hierarchy block.
 
-## Strict, tolerant, and memory-bounded decoding
+## Decoding and encoding policies
 
 Tolerant decoding is the default. Recoverable extensions and damaged optional metadata are preserved where possible and reported through `CshFile.warnings`. Strict mode turns every compatibility warning into a `CshFormatException`:
 
@@ -92,6 +96,19 @@ Safety limits always fail instead of being downgraded to warnings. Preservation 
 
 For a metadata-only browser, disable path decoding and the preservation switches. For an editor, keep path decoding enabled but disable redundant source copies unless round-trip writing or forensic inspection is planned.
 
+`CshEncoder.encode` writes canonical version 2 CSH output by default. Shape names, identifiers, bounds, and decoded paths are regenerated from the model, so preserved shape-record or path bytes are not required. Hierarchy descriptors are also regenerated when their tagged payload was not retained.
+
+Use permissive output only when compatibility data from a tolerant decode must be reproduced:
+
+```dart
+final Uint8List output = CshEncoder.encode(
+  library,
+  options: const CshEncodeOptions(mode: CshEncodeMode.permissive),
+);
+```
+
+Opaque tagged blocks and uninterpreted trailing bytes still require their preservation switches to have been enabled while decoding. `CshWriteException` reports model values or missing source data that cannot be represented safely.
+
 The bundled inspector can validate one file or recursively inspect a corpus:
 
 ```console
@@ -100,7 +117,7 @@ dart run tool/inspect_csh.dart --strict --summary-only path/to/shapes
 
 ## Scope
 
-CshKit currently reads CSH files but does not write them or rasterize Photoshop Boolean operations. Its model retains the metadata and opaque bytes needed to add those features later without narrowing the reader. Focale integration is intentionally left to a separate change.
+CshKit reads and writes CSH files, but it does not rasterize Photoshop Boolean operations. A host editor remains responsible for applying combine, subtract, intersect, and exclude operations when rendering or converting the vector paths. Focale integration is intentionally left to a separate change.
 
 See [docs/CSH.md](docs/CSH.md) for the implemented binary layout, record semantics, compatibility behavior, and integration notes.
 

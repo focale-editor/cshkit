@@ -145,6 +145,12 @@ Decoded geometry and preserved source bytes serve different purposes and can be 
 
 For UI browsing, decode on a worker isolate when libraries are large. Metadata-only decoding avoids allocating semantic knot objects. For editing, retain the semantic path but consider disabling `preservePathData` and `preserveShapeData` unless exact source reconstruction is required.
 
+## Encoding
+
+`CshEncoder` writes the `cush` envelope, shape records, vector-path records, tagged blocks, and hierarchy descriptors. Strict mode is the default and emits canonical version 2 containers with version 1 shapes, regenerated lengths, zero alignment, and validated Photoshop path coordinates. It uses the decoded `CshVectorPath`, so complete source records and preserved path bytes are unnecessary for ordinary editing and writing.
+
+Permissive mode retains representable source versions, declared lengths, alignment bytes, alternate tagged-block signatures, and unrecognized trailing data. Opaque data can only be emitted when the corresponding decode preservation option retained it. Both modes report unrepresentable models through `CshWriteException` rather than truncating numeric or Pascal-string fields.
+
 ## Integration guidance
 
 An editor should use the typed subpaths as its canonical import representation. SVG text is suitable for previews, but cannot carry the per-subpath Boolean operation by itself. Retain the CSH identifier as the stable preset key and the source index as an ordering fallback. Use the flattened hierarchy to build a tree without assuming that every preset descriptor contains a name or identifier.
@@ -153,7 +159,7 @@ CshKit has no Flutter dependency. Focale can therefore decode in an isolate, tra
 
 ## Current boundaries
 
-CshKit is read-only. It does not rasterize contours, perform Boolean geometry, or write CSH files. Unknown structures are kept accessible rather than silently interpreted. Tolerant decoding stops at a structurally damaged shape when no reliable boundary remains; it does not scan arbitrary bytes for a guessed recovery point.
+CshKit does not rasterize contours or perform Boolean geometry. Unknown structures are kept accessible rather than silently interpreted. Tolerant decoding stops at a structurally damaged shape when no reliable boundary remains; it does not scan arbitrary bytes for a guessed recovery point. Encoding likewise requires complete semantic or preserved data and never invents an opaque payload.
 
 ## References
 
