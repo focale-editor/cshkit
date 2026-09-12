@@ -1,5 +1,10 @@
 # 📰 CshKit changelog
 
+## v0.2.0
+Released on September 13, 2026.
+
+* **BREAKING REFACTOR**: Delegate tagged block and hierarchy handling to `pscore`. ([#b82684d](https://github.com/focale-editor/cshkit/commit/b82684d))
+
 ## v0.1.1
 Released on September 12, 2026.
 
