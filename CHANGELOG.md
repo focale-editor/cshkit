@@ -1,5 +1,10 @@
 # 📰 CshKit changelog
 
+## v0.2.1
+Released on September 13, 2026.
+
+* **DOCS**: Added contributing guide, package screenshot, and pubspec metadata. ([#bab09f6](https://github.com/focale-editor/cshkit/commit/bab09f6))
+
 ## v0.2.0
 Released on September 13, 2026.
 
