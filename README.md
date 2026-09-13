@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="screenshots/overview.png" alt="CshKit package illustration" width="180">
+</p>
+
 # CshKit
 
 CshKit is a pure Dart codec for Adobe Photoshop custom-shape libraries (`.csh`) and `CustomShapes.psp` preference files. It reads and writes editable vector geometry, exact preset metadata, optional group hierarchy, and opaque extension data without depending on Flutter or native code.
@@ -144,3 +148,7 @@ See [docs/CSH.md](docs/CSH.md) for the implemented binary layout, record semanti
 - [ag-psd CSH implementation](https://github.com/Agamnentzar/ag-psd/blob/master/src/csh.ts)
 
 CshKit is an independent implementation and is not affiliated with or endorsed by Adobe.
+
+---
+
+Built for **[Focale](https://focale-editor.app)**, an advanced local image editor. Discover what these packages make possible in a real creative workflow.
