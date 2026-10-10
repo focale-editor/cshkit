@@ -1,23 +1,8 @@
 import 'package:cshkit/src/model/csh_shape.dart';
 import 'package:pscore/pscore.dart';
 
-/// Identifies the role of one slot in Photoshop's optional shape hierarchy.
-enum CshHierarchyEntryKind {
-  /// Opens a named shape group.
-  groupStart,
-
-  /// Closes the most recently opened shape group.
-  groupEnd,
-
-  /// Refers to a custom-shape preset.
-  preset,
-
-  /// Preserves an intentionally empty hierarchy slot.
-  empty,
-
-  /// Preserves an object class not understood by this release.
-  unknown,
-}
+/// Backward-compatible name for the shared hierarchy-slot role.
+typedef CshHierarchyEntryKind = PsPresetHierarchyEntryKind;
 
 /// One ordered item from a trailing Photoshop `phry` hierarchy descriptor.
 final class CshHierarchyEntry {

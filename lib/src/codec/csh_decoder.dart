@@ -36,6 +36,9 @@ final class CshDecoder extends Converter<List<int>, CshFile> {
   /// Container version described for custom-shape libraries.
   static const int _fileVersion = 2;
 
+  /// Container version of the keyed-record libraries older Photoshop versions wrote.
+  static const int _legacyFileVersion = 1;
+
   /// Shape-record version described for custom-shape libraries.
   static const int _shapeVersion = 1;
 
@@ -85,6 +88,9 @@ final class CshDecoder extends Converter<List<int>, CshFile> {
       );
     }
     final int version = reader.readUint32();
+    if (version == _legacyFileVersion) {
+      return _decodeLegacy(reader, bytes, options, signature);
+    }
     final int declaredShapeCount = reader.readUint32();
     if (declaredShapeCount > options.maxShapes) {
       throw CshFormatException(
@@ -108,6 +114,95 @@ final class CshDecoder extends Converter<List<int>, CshFile> {
     if (complete) {
       _decodeTaggedBlocks(reader, context);
     }
+    return context.build();
+  }
+
+  /// Decodes a version 1 library, whose shapes are records of `name`, `rect`, and `data` blocks.
+  static CshFile _decodeLegacy(PsBinaryReader reader, Uint8List bytes, CshDecodeOptions options, String signature) {
+    final int reserved = reader.readUint32();
+    final int declaredShapeCount = reader.readUint32();
+    if (declaredShapeCount > options.maxShapes) {
+      throw CshFormatException(message: 'CSH shape count $declaredShapeCount exceeds the configured ${options.maxShapes} limit', source: bytes, offset: 12);
+    }
+    final _CshDecodeContext context = _CshDecodeContext(
+      bytes: bytes,
+      options: options,
+      signature: signature,
+      version: _legacyFileVersion,
+      declaredShapeCount: declaredShapeCount,
+    );
+    if (reserved != 0) {
+      context.issue('CSH version 1 reserved field is $reserved instead of 0', 8);
+    }
+    for (int index = 0; index < declaredShapeCount; index++) {
+      context.shapeIndex = index;
+      final int recordStart = reader.offset;
+      final int length = reader.readUint32();
+      if (length > options.maxShapeBytes || length > reader.remaining) {
+        throw PsFormatException(message: 'CSH shape record length $length exceeds the available data', source: bytes, offset: recordStart);
+      }
+      final PsBinaryReader record = reader.readReader(length);
+      String name = '';
+      Uint16List nameCodeUnits = Uint16List(0);
+      CshRectangle? bounds;
+      Uint8List pathData = Uint8List(0);
+      while (!record.isAtEnd) {
+        final int blockOffset = record.baseOffset + record.offset;
+        final String key = record.readString(4);
+        final PsBinaryReader block = record.readReader(record.readUint32());
+        switch (key) {
+          case 'name':
+            final int count = block.readUint32();
+            if (count > options.maxShapeNameCodeUnits || count > block.remaining ~/ 2) {
+              throw PsFormatException(message: 'CSH shape-name length $count exceeds its block', source: bytes, offset: blockOffset);
+            }
+            nameCodeUnits = Uint16List.fromList([for (int unit = 0; unit < count; unit++) block.readUint16()]);
+            name = _trimTerminalNulls(String.fromCharCodes(nameCodeUnits));
+          case 'rect':
+            bounds = CshRectangle(top: block.readInt32(), left: block.readInt32(), bottom: block.readInt32(), right: block.readInt32());
+          case 'data':
+            pathData = block.readBytes(block.remaining);
+          default:
+            context.issue('Unknown CSH version 1 block "$key" was skipped', blockOffset);
+        }
+        // A block that does not end the record is padded to four bytes.
+        if (!record.isAtEnd) {
+          record.skip(((4 - (record.baseOffset + record.offset) % 4) % 4).clamp(0, record.remaining));
+        }
+      }
+      if (bounds == null) {
+        throw PsFormatException(message: 'CSH version 1 shape ${index + 1} has no rect block', source: bytes, offset: recordStart);
+      }
+      final int recordEnd = reader.offset;
+      // Records are aligned to four bytes.
+      final Uint8List padding = reader.readBytes(((4 - reader.offset % 4) % 4).clamp(0, reader.remaining));
+      if (_containsNonzero(padding)) {
+        context.issue('CSH version 1 record padding contains nonzero bytes', recordEnd);
+      }
+      final int pathRecordCount = pathData.length ~/ PsVectorPathCodec.recordByteLength;
+      context.ensurePathRecords(pathRecordCount, recordStart);
+      context.addShape(
+        CshShape(
+          index: index,
+          sourceOffset: recordStart,
+          name: name,
+          nameCodeUnits: nameCodeUnits,
+          namePaddingData: Uint8List(0),
+          version: _shapeVersion,
+          declaredDataLength: length,
+          id: '',
+          idData: Uint8List(0),
+          bounds: bounds,
+          path: options.decodePathData ? PsVectorPathCodec.decode(pathData, maxRecords: pathRecordCount) : null,
+          pathData: options.preservePathData ? pathData : Uint8List(0),
+          pathRecordCount: pathRecordCount,
+          pathPaddingData: Uint8List(0),
+          recordData: options.preserveShapeData ? Uint8List.sublistView(bytes, recordStart, recordEnd) : null,
+        ),
+      );
+    }
+    context.shapeIndex = null;
+    _decodeTaggedBlocks(reader, context);
     return context.build();
   }
 
@@ -700,7 +795,8 @@ final class _CshDecodeContext {
 
   /// Preserves one decoded [shape] and reports duplicate identifiers.
   void addShape(CshShape shape) {
-    if (shape.id.isEmpty) {
+    // Version 1 libraries carry no identifiers.
+    if (shape.id.isEmpty && version != 1) {
       issue('CSH shape has an empty identifier', shape.sourceOffset);
     } else if (_shapesById.containsKey(shape.id)) {
       issue('CSH shape identifier "${shape.id}" is duplicated', shape.sourceOffset);

@@ -3,7 +3,7 @@ import 'package:cshkit/src/model/csh_shape.dart';
 import 'package:pscore/pscore.dart';
 
 /// Receives a recoverable hierarchy compatibility issue.
-typedef CshHierarchyIssueHandler = void Function(String message);
+typedef CshHierarchyIssueHandler = PsPresetHierarchyIssueHandler;
 
 /// Adapts the shared Photoshop hierarchy mapper to CSH shape entries.
 abstract final class CshHierarchyMapper {
@@ -30,7 +30,7 @@ abstract final class CshHierarchyMapper {
     ))
       CshHierarchyEntry(
         index: entry.index,
-        kind: _kind(entry.kind),
+        kind: entry.kind,
         depth: entry.depth,
         classId: entry.classId,
         name: entry.name,
@@ -39,13 +39,4 @@ abstract final class CshHierarchyMapper {
         rawDescriptor: entry.rawDescriptor,
       ),
   ]);
-
-  /// Converts the shared semantic role to its compatibility enum.
-  static CshHierarchyEntryKind _kind(PsPresetHierarchyEntryKind kind) => switch (kind) {
-    PsPresetHierarchyEntryKind.groupStart => CshHierarchyEntryKind.groupStart,
-    PsPresetHierarchyEntryKind.groupEnd => CshHierarchyEntryKind.groupEnd,
-    PsPresetHierarchyEntryKind.preset => CshHierarchyEntryKind.preset,
-    PsPresetHierarchyEntryKind.empty => CshHierarchyEntryKind.empty,
-    PsPresetHierarchyEntryKind.unknown => CshHierarchyEntryKind.unknown,
-  };
 }

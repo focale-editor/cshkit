@@ -6,11 +6,10 @@
 
 CshKit is a pure Dart codec for Adobe Photoshop custom-shape libraries (`.csh`) and `CustomShapes.psp` preference files. It reads and writes editable vector geometry, exact preset metadata, optional group hierarchy, and opaque extension data without depending on Flutter or native code.
 
-The package is intended for editors such as Focale that need more than a raster thumbnail: stable shape identifiers, cubic Bézier contours, Photoshop Boolean-operation markers, source bounds, and bounded decoding of untrusted files.
-
 ## Supported data
 
 - `cush` version 2 containers and version 1 custom-shape records.
+- `cush` version 1 containers written by older Photoshop versions, whose shapes are keyed `name`, `rect`, and `data` blocks; they decode to the same model and are written back in that layout.
 - Big-endian UTF-16 names, Pascal identifiers, signed reference rectangles, and exact source records.
 - Closed and open subpaths, linked and unlinked cubic Bézier knots, and all defined Photoshop path selectors from 0 through 8.
 - Signed 8.24 fixed-point coordinates, including values outside the usual normalized 0–1 interval.

@@ -28,6 +28,9 @@ final class CshEncoder extends Converter<CshFile, List<int>> {
   /// Canonical CSH container version.
   static const int _fileVersion = 2;
 
+  /// Container version of keyed-record libraries written by older Photoshop versions.
+  static const int _legacyFileVersion = 1;
+
   /// Canonical custom-shape record version.
   static const int _shapeVersion = 1;
 
@@ -47,10 +50,19 @@ final class CshEncoder extends Converter<CshFile, List<int>> {
 
       final PsBinaryWriter writer = PsBinaryWriter()
         ..writeString(file.signature)
-        ..writeUint32(file.version)
-        ..writeUint32(options.mode == CshEncodeMode.strict ? file.shapes.length : file.declaredShapeCount);
-      for (final CshShape shape in file.shapes) {
-        writer.writeBytes(_encodeShape(shape, options));
+        ..writeUint32(file.version);
+      if (file.version == _legacyFileVersion) {
+        writer
+          ..writeUint32(0)
+          ..writeUint32(file.shapes.length);
+        for (final CshShape shape in file.shapes) {
+          writer.writeBytes(_encodeLegacyShape(shape, options));
+        }
+      } else {
+        writer.writeUint32(options.mode == CshEncodeMode.strict ? file.shapes.length : file.declaredShapeCount);
+        for (final CshShape shape in file.shapes) {
+          writer.writeBytes(_encodeShape(shape, options));
+        }
       }
       if (options.includeTaggedBlocks) {
         _writeTaggedBlocks(writer, file, options);
@@ -66,6 +78,41 @@ final class CshEncoder extends Converter<CshFile, List<int>> {
     } on RangeError catch (error) {
       throw CshWriteException(message: 'A CSH numeric value cannot be encoded: $error');
     }
+  }
+
+  /// Encodes one version 1 record of `name`, `rect`, and `data` blocks.
+  static Uint8List _encodeLegacyShape(CshShape shape, CshEncodeOptions options) {
+    final CshVectorPath? path = shape.path;
+    final Uint8List pathData = path == null ? shape.pathData : PsVectorPathCodec.encode(path);
+    if (path == null && pathData.isEmpty) {
+      throw CshWriteException(message: 'Shape ${shape.index + 1} has neither a decoded path nor preserved path bytes');
+    }
+    final List<int> nameCodeUnits = options.mode == CshEncodeMode.permissive && shape.nameCodeUnits.isNotEmpty ? shape.nameCodeUnits : shape.name.codeUnits;
+    final PsBinaryWriter name = PsBinaryWriter()..writeUint32(nameCodeUnits.length);
+    nameCodeUnits.forEach(name.writeUint16);
+    final PsBinaryWriter rect = PsBinaryWriter()
+      ..writeInt32(shape.bounds.top)
+      ..writeInt32(shape.bounds.left)
+      ..writeInt32(shape.bounds.bottom)
+      ..writeInt32(shape.bounds.right);
+    final PsBinaryWriter record = PsBinaryWriter();
+    final List<(String, Uint8List)> blocks = [('name', name.takeBytes()), ('rect', rect.takeBytes()), ('data', pathData)];
+    for (final (String key, Uint8List payload) in blocks) {
+      record
+        ..writeString(key)
+        ..writeUint32(payload.length)
+        ..writeBytes(payload);
+      // Blocks before the last are padded to four bytes; the record length field precedes them.
+      if (key != blocks.last.$1) {
+        record.writeZeros((4 - (record.length + 4) % 4) % 4);
+      }
+    }
+    final Uint8List body = record.takeBytes();
+    return (PsBinaryWriter()
+          ..writeUint32(body.length)
+          ..writeBytes(body)
+          ..writeZeros((4 - body.length % 4) % 4))
+        .takeBytes();
   }
 
   /// Encodes one custom shape from semantic fields or preserved source data.
@@ -229,13 +276,15 @@ final class CshEncoder extends Converter<CshFile, List<int>> {
 
   /// Applies canonical Photoshop constraints to the emitted library.
   static void _validateStrict(CshFile file, CshEncodeOptions options) {
-    if (file.signature != _fileSignature || file.version != _fileVersion) {
+    if (file.signature != _fileSignature || file.version != _fileVersion && file.version != _legacyFileVersion) {
       throw const CshWriteException(message: 'Strict CSH output requires the "$_fileSignature" signature and version $_fileVersion');
     }
     if (file.declaredShapeCount != file.shapes.length) {
       throw const CshWriteException(message: 'Strict CSH output requires the declared shape count to match the shape list');
     }
-    file.shapes.forEach(_validateStrictShape);
+    for (final CshShape shape in file.shapes) {
+      _validateStrictShape(shape, requireIdentifier: file.version != _legacyFileVersion);
+    }
     if (options.includeTaggedBlocks) {
       for (final CshTaggedBlock block in file.taggedBlocks) {
         if (block.signature != '8BIM') {
@@ -252,14 +301,16 @@ final class CshEncoder extends Converter<CshFile, List<int>> {
   }
 
   /// Validates one canonical version 1 custom-shape record.
-  static void _validateStrictShape(CshShape shape) {
+  ///
+  /// Version 1 libraries carry no identifiers, so [requireIdentifier] is false for them.
+  static void _validateStrictShape(CshShape shape, {required bool requireIdentifier}) {
     if (shape.version != _shapeVersion) {
       throw CshWriteException(message: 'Shape ${shape.index + 1} must use record version $_shapeVersion');
     }
     if (shape.name.isEmpty || shape.name.codeUnits.contains(0)) {
       throw CshWriteException(message: 'Shape ${shape.index + 1} requires a nonempty name without embedded nulls');
     }
-    if (shape.id.isEmpty || shape.id.codeUnits.any((value) => value == 0 || value > 0xff)) {
+    if (requireIdentifier && (shape.id.isEmpty || shape.id.codeUnits.any((value) => value == 0 || value > 0xff))) {
       throw CshWriteException(message: 'Shape ${shape.index + 1} requires a nonempty Latin-1 identifier without nulls');
     }
     if (!shape.bounds.isValid) {

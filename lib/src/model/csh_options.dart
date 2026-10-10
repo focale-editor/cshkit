@@ -105,13 +105,7 @@ final class CshEncodeOptions {
 }
 
 /// Describes a recoverable compatibility issue found while decoding.
-final class CshWarning {
-  /// Human-readable explanation of the compatibility issue.
-  final String message;
-
-  /// Absolute byte offset associated with the issue, when known.
-  final int? offset;
-
+final class CshWarning extends PsWarning {
   /// Zero-based shape index associated with the issue, when known.
   final int? shapeIndex;
 
@@ -120,60 +114,44 @@ final class CshWarning {
 
   /// Creates a warning with optional source context.
   const CshWarning({
-    required this.message,
-    this.offset,
+    required super.message,
+    super.offset,
     this.shapeIndex,
     this.blockKey,
   });
 
   @override
-  String toString() {
-    final String location = offset == null ? '' : ' at byte $offset';
+  String get typeName => 'CshWarning';
+
+  @override
+  String get context {
     final int? currentShapeIndex = shapeIndex;
     final String shape = currentShapeIndex == null ? '' : ' in shape ${currentShapeIndex + 1}';
     final String block = blockKey == null ? '' : ' in $blockKey';
-    return 'CshWarning$location$shape$block: $message';
+    return '$shape$block';
   }
 }
 
 /// Reports malformed, truncated, unsupported, or unsafe CSH input.
-final class CshFormatException implements FormatException {
-  /// Human-readable explanation of the malformed data.
-  @override
-  final String message;
-
-  /// Input associated with the failure, when useful.
-  @override
-  final Object? source;
-
-  /// Absolute byte offset associated with the failure, when known.
-  @override
-  final int? offset;
-
-  /// Creates a CSH format error at an optional absolute byte [offset].
+final class CshFormatException extends PsFormatException {
+  /// Creates an error at an optional absolute byte [offset].
   const CshFormatException({
-    required this.message,
-    this.source,
-    this.offset,
+    required super.message,
+    super.source,
+    super.offset,
   });
 
   @override
-  String toString() {
-    final String location = offset == null ? '' : ' at byte $offset';
-    return 'CshFormatException$location: $message';
-  }
+  String get typeName => 'CshFormatException';
 }
 
 /// Reports model data that cannot be represented by the requested CSH output.
-final class CshWriteException implements Exception {
-  /// Explains why encoding failed.
-  final String message;
-
+final class CshWriteException extends PsWriteException {
   /// Creates an encoding error with a user-facing [message].
   const CshWriteException({
-    required this.message,
+    required super.message,
   });
 
   @override
-  String toString() => 'CshWriteException: $message';
+  String get typeName => 'CshWriteException';
 }

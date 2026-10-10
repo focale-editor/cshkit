@@ -16,6 +16,18 @@ A standalone custom-shape library and Photoshop's `CustomShapes.psp` preference 
 
 CshKit verifies every declared length before reading its contents. A tolerant decode can return the shapes that precede a damaged later record; `CshFile.isComplete` distinguishes that result from a fully decoded library.
 
+## Version 1 containers
+
+Older libraries, such as `Talk Bubbles.csh` in Photoshop CS3, use container version 1: `cush`, the version, a zero 32-bit field, and the shape count. Each shape is a 32-bit record length followed by keyed blocks, each a four-character key, a 32-bit length, and the payload:
+
+| Key | Payload |
+|---|---|
+| `name` | 32-bit UTF-16 code-unit count, then the code units, without a terminating null |
+| `rect` | Top, left, bottom, and right as signed 32-bit integers |
+| `data` | The same 26-byte path records as version 2 |
+
+A block followed by another one is padded to a four-byte boundary, and the padding counts in the record length; each record is also padded to four bytes, outside its length. Version 1 shapes have no identifier. CS3's version 1 `Talk Bubbles.csh` decodes to the same 14 shapes, with the same path records and bounds, as CS5's version 2 copy, and re-encodes byte for byte.
+
 ## Shape record
 
 Each shape starts with a name and an independently length-bounded body:
