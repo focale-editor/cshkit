@@ -1,5 +1,11 @@
 # 📰 CshKit changelog
 
+## v0.3.0
+Released on October 10, 2026.
+
+* **BREAKING FEAT**: Added legacy shape libraries and shared hierarchy types. ([#7a2aa50](https://github.com/focale-editor/cshkit/commit/7a2aa50))
+* **BREAKING CHORE**: Updated pscore dependency to 0.2.0. ([#42c8e13](https://github.com/focale-editor/cshkit/commit/42c8e13))
+
 ## v0.2.2
 Released on October 5, 2026.
 
